@@ -43,65 +43,15 @@ RUN mkdir -p /app/cello-practise/data && ln -s /app/cello-practise/data /app/dat
 # ==================== 配置 Supervisord ====================
 WORKDIR /app
 
-# 创建 supervisord 配置文件
-RUN mkdir -p /etc/supervisor.d
-RUN cat > /etc/supervisor.d/services.ini << 'EOF'
-[supervisord]
-nodaemon=true
-user=root
-logfile=/var/log/supervisor/supervisord.log
-pidfile=/var/run/supervisord.pid
+# 创建必要的目录
+RUN mkdir -p /etc/supervisor.d /var/log/supervisor
 
-[program:portal]
-directory=/app/portal
-command=node server.js
-autostart=true
-autorestart=true
-priority=1
-stdout_logfile=/var/log/supervisor/portal.log
-stderr_logfile=/var/log/supervisor/portal_error.log
-environment=PORT=8080,NODE_ENV=production
+# 复制 supervisord 配置文件
+COPY supervisord.conf /etc/supervisord.conf
+COPY supervisor-services.ini /etc/supervisor.d/services.ini
 
-[program:parenting]
-directory=/app/parenting
-command=node server.js
-autostart=true
-autorestart=true
-priority=2
-stdout_logfile=/var/log/supervisor/parenting.log
-stderr_logfile=/var/log/supervisor/parenting_error.log
-environment=PORT=3000,NODE_ENV=production
-
-[program:cello]
-directory=/app/cello-practise
-command=node server.js
-autostart=true
-autorestart=true
-priority=3
-stdout_logfile=/var/log/supervisor/cello.log
-stderr_logfile=/var/log/supervisor/cello_error.log
-environment=PORT=3001,NODE_ENV=production
-EOF
-
-# 创建日志目录
-RUN mkdir -p /var/log/supervisor
-
-# ==================== 启动脚本 ====================
-RUN cat > /app/start.sh << 'EOF'
-#!/bin/sh
-echo "=========================================="
-echo "🏠 家庭应用中心启动中..."
-echo "=========================================="
-echo ""
-echo "服务列表:"
-echo "  • Portal (门户):      http://localhost:8080"
-echo "  • Parenting (育儿):   http://localhost:3000"
-echo "  • Cello (大提琴):     http://localhost:3001"
-echo ""
-echo "=========================================="
-exec /usr/bin/supervisord -c /etc/supervisord.conf
-EOF
-
+# 复制启动脚本
+COPY start-docker.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # 暴露三个服务的端口
