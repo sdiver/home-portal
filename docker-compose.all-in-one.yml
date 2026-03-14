@@ -1,0 +1,61 @@
+version: '3.8'
+
+# 家庭应用中心 - 三合一容器部署
+# 所有服务运行在一个容器中，适合资源受限的群晖 NAS
+
+services:
+  homegate:
+    build:
+      context: .
+      dockerfile: Dockerfile.all-in-one
+    image: homegate-all-in-one:latest
+    container_name: homegate
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # Portal 门户
+      - "3000:3000"  # Parenting 育儿
+      - "3001:3001"  # Cello 大提琴
+    volumes:
+      # 持久化 parenting 数据库
+      - ./parenting/data:/app/parenting/data
+      - ./parenting/kids_learning.db:/app/parenting/kids_learning.db
+      # 持久化 cello 数据（通过符号链接 /app/data -> /app/cello-practise/data）
+      - ./cello-practise/data:/app/cello-practise/data
+      # 持久化 cello 上传文件
+      - ./cello-practise/uploads:/app/uploads
+      # 日志文件
+      - ./logs:/var/log/supervisor
+    environment:
+      - NODE_ENV=production
+      - PORTAL_PORT=8080
+      - PARENTING_PORT=3000
+      - CELLO_PORT=3001
+    networks:
+      - homegate-network
+    # 资源限制（适合群晖）
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  # 可选：Watchtower 自动更新
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower-homegate
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_MONITOR_ONLY=true
+      - TZ=Asia/Shanghai
+    command: homegate
+    networks:
+      - homegate-network
+
+networks:
+  homegate-network:
+    driver: bridge

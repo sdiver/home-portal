@@ -1,0 +1,117 @@
+# 家庭应用中心 - 三合一容器
+# 同时运行 portal、parenting、cello-practise 三个服务
+
+FROM node:18-alpine
+
+# 安装 supervisord 用于管理多个进程
+RUN apk add --no-cache supervisor
+
+# 设置工作目录
+WORKDIR /app
+
+# ==================== 1. Portal 服务 (端口 8080) ====================
+WORKDIR /app/portal
+COPY portal/package*.json ./
+RUN npm ci --only=production
+COPY portal/ ./
+
+# ==================== 2. Parenting 服务 (端口 3000) ====================
+WORKDIR /app/parenting
+COPY parenting/package*.json ./
+RUN npm ci --only=production
+COPY parenting/ ./
+
+# 创建数据目录
+RUN mkdir -p /app/parenting/data
+
+# ==================== 3. Cello-Practise 服务 (端口 3001) ====================
+WORKDIR /app/cello-practise
+COPY cello-practise/backend/package*.json ./
+RUN npm ci --only=production
+COPY cello-practise/backend/ ./
+
+# 复制前端静态文件到 /app/frontend（backend 通过 ../frontend 访问）
+COPY cello-practise/frontend/ /app/frontend/
+COPY cello-practise/index.html /app/index.html
+
+# 创建 uploads 目录（cello 使用 ../../uploads 路径）
+RUN mkdir -p /app/uploads
+
+# 创建数据目录（cello 使用 ../../data 路径，需要链接到 /app/cello-practise/data）
+RUN mkdir -p /app/cello-practise/data && ln -s /app/cello-practise/data /app/data
+
+# ==================== 配置 Supervisord ====================
+WORKDIR /app
+
+# 创建 supervisord 配置文件
+RUN mkdir -p /etc/supervisor.d
+RUN cat > /etc/supervisor.d/services.ini << 'EOF'
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:portal]
+directory=/app/portal
+command=node server.js
+autostart=true
+autorestart=true
+priority=1
+stdout_logfile=/var/log/supervisor/portal.log
+stderr_logfile=/var/log/supervisor/portal_error.log
+environment=PORT=8080,NODE_ENV=production
+
+[program:parenting]
+directory=/app/parenting
+command=node server.js
+autostart=true
+autorestart=true
+priority=2
+stdout_logfile=/var/log/supervisor/parenting.log
+stderr_logfile=/var/log/supervisor/parenting_error.log
+environment=PORT=3000,NODE_ENV=production
+
+[program:cello]
+directory=/app/cello-practise
+command=node server.js
+autostart=true
+autorestart=true
+priority=3
+stdout_logfile=/var/log/supervisor/cello.log
+stderr_logfile=/var/log/supervisor/cello_error.log
+environment=PORT=3001,NODE_ENV=production
+EOF
+
+# 创建日志目录
+RUN mkdir -p /var/log/supervisor
+
+# ==================== 启动脚本 ====================
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/sh
+echo "=========================================="
+echo "🏠 家庭应用中心启动中..."
+echo "=========================================="
+echo ""
+echo "服务列表:"
+echo "  • Portal (门户):      http://localhost:8080"
+echo "  • Parenting (育儿):   http://localhost:3000"
+echo "  • Cello (大提琴):     http://localhost:3001"
+echo ""
+echo "=========================================="
+exec /usr/bin/supervisord -c /etc/supervisord.conf
+EOF
+
+RUN chmod +x /app/start.sh
+
+# 暴露三个服务的端口
+EXPOSE 8080 3000 3001
+
+# 健康检查 - 检查所有三个服务
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ && \
+        wget --no-verbose --tries=1 --spider http://localhost:3000/api/health && \
+        wget --no-verbose --tries=1 --spider http://localhost:3001/api/sheets || exit 1
+
+# 启动 supervisord
+CMD ["/app/start.sh"]
