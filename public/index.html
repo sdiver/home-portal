@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>家庭应用中心</title>
+    <base href="./">
     <style>
         * {
             margin: 0;
@@ -320,10 +321,10 @@
         </header>
 
         <div class="quick-actions">
-            <a href="/admin" class="quick-btn">
+            <a href="admin" class="quick-btn">
                 ⚙️ 管理应用
             </a>
-            <a href="/ai-chat" class="quick-btn">
+            <a href="ai-chat" class="quick-btn">
                 🤖 完整AI对话
             </a>
             <button class="quick-btn" onclick="checkAppsStatus()">
@@ -367,7 +368,7 @@
         </div>
 
         <footer>
-            <p>家庭应用管理门户 | <a href="/admin">进入管理后台</a></p>
+            <p>家庭应用管理门户 | <a href="admin">进入管理后台</a></p>
         </footer>
     </div>
 
@@ -379,7 +380,7 @@
         // 加载应用列表
         async function loadApps() {
             try {
-                const response = await fetch('/api/apps');
+                const response = await fetch('api/apps');
                 const result = await response.json();
 
                 if (result.success) {
@@ -406,7 +407,7 @@
                     <div class="empty-state" style="grid-column: 1/-1;">
                         <div class="empty-state-icon">📱</div>
                         <p>还没有配置任何应用</p>
-                        <a href="/admin" style="color: #667eea;">去管理后台添加</a>
+                        <a href="admin" style="color: #667eea;">去管理后台添加</a>
                     </div>
                 `;
                 return;
@@ -426,7 +427,7 @@
         // 加载 AI 模型
         async function loadAiModels() {
             try {
-                const response = await fetch('/api/ai-models/enabled');
+                const response = await fetch('api/ai-models/enabled');
                 const result = await response.json();
 
                 if (result.success) {
@@ -488,7 +489,7 @@
             chatArea.scrollTop = chatArea.scrollHeight;
 
             try {
-                const response = await fetch('/api/ai/chat', {
+                const response = await fetch('api/ai/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

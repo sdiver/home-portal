@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 对话 - 家庭应用中心</title>
+    <base href="./">
     <style>
         * {
             margin: 0;
@@ -391,8 +392,8 @@
     <header class="header">
         <h1>🤖 AI 对话</h1>
         <nav>
-            <a href="/">🏠 返回首页</a>
-            <a href="/admin">⚙️ 管理</a>
+            <a href="./">🏠 返回首页</a>
+            <a href="admin">⚙️ 管理</a>
         </nav>
     </header>
 
@@ -459,7 +460,7 @@
         // 加载 AI 模型
         async function loadAiModels() {
             try {
-                const response = await fetch('/api/ai-models/enabled');
+                const response = await fetch('api/ai-models/enabled');
                 const result = await response.json();
 
                 if (result.success) {
@@ -545,7 +546,7 @@
 
             try {
                 // 使用流式 API
-                const response = await fetch('/api/ai/chat/stream', {
+                const response = await fetch('api/ai/chat/stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

@@ -67,6 +67,15 @@ function createDynamicProxy(targetUrl) {
     });
 }
 
+// ==================== 子路径支持中间件 ====================
+// 支持 /portal-home/* 路径（Nginx 反向代理保留前缀时）
+app.use('/portal-home', (req, res, next) => {
+    // 将 /portal-home/* 重写为 /*，让后续路由可以正常匹配
+    req.url = req.url.replace(/^\/portal-home/, '');
+    if (req.url === '') req.url = '/';
+    next();
+});
+
 // ==================== API 路由 ====================
 
 // 获取所有应用配置
@@ -533,18 +542,21 @@ function setupProxyRoutes() {
 
 // ==================== 页面路由 ====================
 
+// 基础路径前缀（用于反向代理子路径部署）
+const BASE_PATH = process.env.BASE_PATH || '';
+
 // 管理后台
-app.get('/admin', (req, res) => {
+app.get(`${BASE_PATH}/admin`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 // AI 聊天页面
-app.get('/ai-chat', (req, res) => {
+app.get(`${BASE_PATH}/ai-chat`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'ai-chat.html'));
 });
 
 // 主页 - 应用仪表板
-app.get('/', (req, res) => {
+app.get(`${BASE_PATH}/`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理后台 - 家庭应用中心</title>
+    <base href="./">
     <style>
         * {
             margin: 0;
@@ -448,7 +449,7 @@
             <a href="#" class="active" data-tab="apps">应用管理</a>
             <a href="#" data-tab="ai">AI 模型</a>
             <a href="#" data-tab="settings">全局设置</a>
-            <a href="/">返回首页</a>
+            <a href="./">返回首页</a>
         </nav>
     </header>
 
@@ -712,7 +713,7 @@
 
         async function loadApps() {
             try {
-                const response = await fetch('/api/apps');
+                const response = await fetch('api/apps');
                 const result = await response.json();
                 if (result.success) {
                     apps = result.data;
@@ -725,7 +726,7 @@
 
         async function loadAiModels() {
             try {
-                const response = await fetch('/api/ai-models');
+                const response = await fetch('api/ai-models');
                 const result = await response.json();
                 if (result.success) {
                     aiModels = result.data;
@@ -739,7 +740,7 @@
 
         async function loadSettings() {
             try {
-                const response = await fetch('/api/settings');
+                const response = await fetch('api/settings');
                 const result = await response.json();
                 if (result.success) {
                     settings = result.data;
