@@ -3,8 +3,8 @@
 
 FROM node:18-alpine
 
-# 安装 supervisord 用于管理多个进程
-RUN apk add --no-cache supervisor
+# 安装 supervisord 和构建工具（用于编译原生模块）
+RUN apk add --no-cache supervisor python3 make g++
 
 # 设置工作目录
 WORKDIR /app
@@ -12,13 +12,14 @@ WORKDIR /app
 # ==================== 1. Portal 服务 (端口 8080) ====================
 WORKDIR /app/portal
 COPY portal/package*.json ./
-RUN npm ci --only=production
+# 如果存在 package-lock.json 使用 npm ci，否则使用 npm install
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
 COPY portal/ ./
 
 # ==================== 2. Parenting 服务 (端口 3000) ====================
 WORKDIR /app/parenting
 COPY parenting/package*.json ./
-RUN npm ci --only=production
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
 COPY parenting/ ./
 
 # 创建数据目录
@@ -27,7 +28,7 @@ RUN mkdir -p /app/parenting/data
 # ==================== 3. Cello-Practise 服务 (端口 3001) ====================
 WORKDIR /app/cello-practise
 COPY cello-practise/backend/package*.json ./
-RUN npm ci --only=production
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
 COPY cello-practise/backend/ ./
 
 # 复制前端静态文件到 /app/frontend（backend 通过 ../frontend 访问）
