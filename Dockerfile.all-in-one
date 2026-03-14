@@ -38,8 +38,8 @@ COPY cello-practise/index.html /app/index.html
 # 创建 uploads 目录（cello 使用 ../../uploads 路径）
 RUN mkdir -p /app/uploads
 
-# 创建数据目录（cello 使用 ../../data 路径，需要链接到 /app/cello-practise/data）
-RUN mkdir -p /app/cello-practise/data && ln -s /app/cello-practise/data /app/data
+# 创建数据目录（cello 使用 ../../data 路径 = /app/data）
+RUN mkdir -p /app/data && ln -s /app/data /app/cello-practise/data
 
 # ==================== 配置 Supervisord ====================
 WORKDIR /app
@@ -59,10 +59,10 @@ RUN chmod +x /app/start.sh
 EXPOSE 8080 3000 3001
 
 # 健康检查 - 检查所有三个服务
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ && \
         wget --no-verbose --tries=1 --spider http://localhost:3000/api/health && \
-        wget --no-verbose --tries=1 --spider http://localhost:3001/api/sheets || exit 1
+        wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
 
 # 启动 supervisord
 CMD ["/app/start.sh"]
