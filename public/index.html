@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭应用中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            padding: 40px 0;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .quick-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .quick-btn {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .app-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--app-color, #667eea);
+        }
+
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .app-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .app-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .app-desc {
+            font-size: 0.95rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .app-category {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 15px;
+        }
+
+        .app-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .app-status.online {
+            background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+
+        .app-status.offline {
+            background: #f44336;
+        }
+
+        .ai-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .ai-title {
+            font-size: 1.5rem;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ai-input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .ai-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .ai-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .ai-send-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.3s;
+        }
+
+        .ai-send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .ai-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .ai-chat-area {
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 12px;
+            max-width: 85%;
+        }
+
+        .chat-message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .chat-message.ai {
+            background: white;
+            border: 1px solid #e0e0e0;
+        }
+
+        .chat-message .role {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .chat-message .content {
+            line-height: 1.6;
+        }
+
+        .model-selector {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: rgba(255,255,255,0.7);
+        }
+
+        footer a {
+            color: white;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ai-input-area {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 家庭应用中心</h1>
+            <p>统一管理您的所有家庭应用和 AI 助手</p>
+        </header>
+
+        <div class="quick-actions">
+            <a href="/admin" class="quick-btn">
+                ⚙️ 管理应用
+            </a>
+            <a href="/ai-chat" class="quick-btn">
+                🤖 完整AI对话
+            </a>
+            <button class="quick-btn" onclick="checkAppsStatus()">
+                🔄 刷新状态
+            </button>
+        </div>
+
+        <div id="appsContainer" class="apps-grid">
+            <!-- 应用卡片将动态插入这里 -->
+        </div>
+
+        <div class="ai-section">
+            <div class="ai-header">
+                <h2 class="ai-title">
+                    🤖 AI 助手
+                    <span style="font-size: 0.9rem; color: #666; font-weight: normal;">快速问答</span>
+                </h2>
+                <select id="modelSelector" class="model-selector">
+                    <option value="">加载中...</option>
+                </select>
+            </div>
+
+            <div class="ai-input-area">
+                <input
+                    type="text"
+                    id="aiInput"
+                    class="ai-input"
+                    placeholder="输入您的问题，按 Enter 发送..."
+                    onkeypress="if(event.key==='Enter') sendMessage()"
+                >
+                <button id="sendBtn" class="ai-send-btn" onclick="sendMessage()">
+                    发送
+                </button>
+            </div>
+
+            <div id="chatArea" class="ai-chat-area">
+                <div style="text-align: center; color: #999; padding: 40px;">
+                    💬 开始与 AI 对话
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>家庭应用管理门户 | <a href="/admin">进入管理后台</a></p>
+        </footer>
+    </div>
+
+    <script>
+        let apps = [];
+        let aiModels = [];
+        let chatHistory = [];
+
+        // 加载应用列表
+        async function loadApps() {
+            try {
+                const response = await fetch('/api/apps');
+                const result = await response.json();
+
+                if (result.success) {
+                    apps = result.data.filter(a => a.showInDashboard && a.enabled);
+                    renderApps();
+                }
+            } catch (err) {
+                console.error('加载应用失败:', err);
+                document.getElementById('appsContainer').innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-state-icon">⚠️</div>
+                        <p>加载应用失败，请检查网络连接</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染应用卡片
+        function renderApps() {
+            const container = document.getElementById('appsContainer');
+
+            if (apps.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-state-icon">📱</div>
+                        <p>还没有配置任何应用</p>
+                        <a href="/admin" style="color: #667eea;">去管理后台添加</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = apps.map(app => `
+                <a href="${app.url}" class="app-card" style="--app-color: ${app.color}">
+                    <span class="app-status online"></span>
+                    <div class="app-icon">${app.icon}</div>
+                    <div class="app-name">${app.name}</div>
+                    <div class="app-desc">${app.description}</div>
+                    <span class="app-category">${app.category}</span>
+                </a>
+            `).join('');
+        }
+
+        // 加载 AI 模型
+        async function loadAiModels() {
+            try {
+                const response = await fetch('/api/ai-models/enabled');
+                const result = await response.json();
+
+                if (result.success) {
+                    aiModels = result.data;
+                    const selector = document.getElementById('modelSelector');
+
+                    if (aiModels.length === 0) {
+                        selector.innerHTML = '<option value="">未配置模型</option>';
+                        return;
+                    }
+
+                    selector.innerHTML = aiModels.map(m =>
+                        `<option value="${m.id}" ${m.default ? 'selected' : ''}>${m.name}</option>`
+                    ).join('');
+                }
+            } catch (err) {
+                console.error('加载 AI 模型失败:', err);
+            }
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const input = document.getElementById('aiInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const chatArea = document.getElementById('chatArea');
+            const modelId = document.getElementById('modelSelector').value;
+
+            const message = input.value.trim();
+            if (!message) return;
+
+            // 添加用户消息
+            chatHistory.push({ role: 'user', content: message });
+
+            // 更新聊天区域
+            if (chatHistory.length === 1) {
+                chatArea.innerHTML = '';
+            }
+
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = 'chat-message user';
+            userMsgDiv.innerHTML = `
+                <div class="role">您</div>
+                <div class="content">${escapeHtml(message)}</div>
+            `;
+            chatArea.appendChild(userMsgDiv);
+
+            input.value = '';
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span class="loading"></span>';
+
+            // 创建 AI 消息占位
+            const aiMsgDiv = document.createElement('div');
+            aiMsgDiv.className = 'chat-message ai';
+            aiMsgDiv.innerHTML = `
+                <div class="role">AI</div>
+                <div class="content">思考中...</div>
+            `;
+            chatArea.appendChild(aiMsgDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+
+            try {
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        modelId: modelId || undefined,
+                        history: chatHistory.slice(0, -1)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    chatHistory.push({ role: 'assistant', content: result.data.content });
+                    aiMsgDiv.querySelector('.content').innerHTML = formatContent(result.data.content);
+                } else {
+                    aiMsgDiv.querySelector('.content').innerHTML =
+                        `<span style="color: #f44336;">错误: ${result.message}</span>`;
+                }
+            } catch (err) {
+                aiMsgDiv.querySelector('.content').innerHTML =
+                    `<span style="color: #f44336;">请求失败: ${err.message}</span>`;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送';
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 格式化内容（简单的 Markdown 支持）
+        function formatContent(content) {
+            return content
+                .replace(/```([\s\S]*?)```/g, '<pre style="background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto;"><code>$1</code></pre>')
+                .replace(/`([^`]+)`/g, '<code style="background: #f4f4f4; padding: 2px 5px; border-radius: 3px;">$1</code>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // 检查应用状态
+        async function checkAppsStatus() {
+            const cards = document.querySelectorAll('.app-card');
+            cards.forEach(card => {
+                const status = card.querySelector('.app-status');
+                status.className = 'app-status online';
+            });
+            alert('应用状态已刷新');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadApps();
+            loadAiModels();
+        });
+    </script>
+</body>
+</html>

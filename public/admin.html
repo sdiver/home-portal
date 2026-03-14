@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 家庭应用中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .header nav {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header a {
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+
+        .header a:hover, .header a.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title h2 {
+            font-size: 1.3rem;
+            color: #333;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .app-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .app-item {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .app-item:hover {
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .app-item-icon {
+            font-size: 2.5rem;
+            margin-right: 20px;
+        }
+
+        .app-item-info {
+            flex: 1;
+        }
+
+        .app-item-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .app-item-meta {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .app-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 10px;
+        }
+
+        .status-badge.enabled {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-badge.disabled {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .modal-header h3 {
+            font-size: 1.2rem;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .modal-footer {
+            padding: 20px 25px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-picker-wrapper input[type="color"] {
+            width: 50px;
+            height: 40px;
+            padding: 2px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* AI 模型列表 */
+        .model-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .model-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .model-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .model-item-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .model-item-provider {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .model-item-config {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #ddd;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        /* 设置页面 */
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-info h4 {
+            margin-bottom: 5px;
+        }
+
+        .setting-info p {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: #4CAF50;
+        }
+
+        .toast.error {
+            background: #f44336;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .app-item {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .app-item-icon {
+                margin-right: 0;
+                margin-bottom: 15px;
+            }
+
+            .app-item-actions {
+                margin-top: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>⚙️ 管理后台</h1>
+        <nav>
+            <a href="#" class="active" data-tab="apps">应用管理</a>
+            <a href="#" data-tab="ai">AI 模型</a>
+            <a href="#" data-tab="settings">全局设置</a>
+            <a href="/">返回首页</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- 应用管理 -->
+        <div id="tab-apps" class="tab-content active">
+            <div class="section-title">
+                <h2>📱 应用列表</h2>
+                <button class="btn btn-primary" onclick="openAppModal()">+ 添加应用</button>
+            </div>
+
+            <div class="card">
+                <div id="appList" class="app-list">
+                    <!-- 应用列表将动态插入 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 模型配置 -->
+        <div id="tab-ai" class="tab-content">
+            <div class="section-title">
+                <h2>🤖 AI 模型配置</h2>
+                <button class="btn btn-primary" onclick="openModelModal()">+ 添加模型</button>
+            </div>
+
+            <div class="card">
+                <div id="modelList" class="model-list">
+                    <!-- 模型列表将动态插入 -->
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 15px;">💡 使用说明</h3>
+                <ul style="line-height: 2; color: #666; padding-left: 20px;">
+                    <li>配置 API Key 后即可在首页使用 AI 聊天功能</li>
+                    <li>支持 Claude (Anthropic) 和 OpenAI (GPT-4/3.5) 模型</li>
+                    <li>可以启用多个模型，用户可以在对话时选择</li>
+                    <li>默认模型将被用于快速问答</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 全局设置 -->
+        <div id="tab-settings" class="tab-content">
+            <div class="section-title">
+                <h2>⚙️ 全局设置</h2>
+                <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+            </div>
+
+            <div class="card">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>门户标题</h4>
+                        <p>显示在浏览器标签和首页的标题</p>
+                    </div>
+                    <input type="text" id="settingTitle" style="width: 250px;" value="家庭应用中心">
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>默认 AI 模型</h4>
+                        <p>快速问答默认使用的模型</p>
+                    </div>
+                    <select id="settingDefaultModel" style="width: 250px;">
+                        <option value="">加载中...</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>启用 AI 聊天</h4>
+                        <p>在首页显示 AI 快速问答区域</p>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="settingEnableAi" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>代理超时时间</h4>
+                        <p>请求后端应用的超时时间（毫秒）</p>
+                    </div>
+                    <input type="number" id="settingTimeout" style="width: 150px;" value="30000">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 应用编辑模态框 -->
+    <div id="appModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="appModalTitle">添加应用</h3>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="appId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>应用名称 *</label>
+                        <input type="text" id="appName" placeholder="例如：大提琴练习">
+                    </div>
+                    <div class="form-group">
+                        <label>应用 ID *</label>
+                        <input type="text" id="appIdInput" placeholder="例如：cello">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>描述</label>
+                    <input type="text" id="appDesc" placeholder="简短描述应用功能">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>图标</label>
+                        <input type="text" id="appIcon" placeholder="例如：🎻" value="📱">
+                    </div>
+                    <div class="form-group">
+                        <label>分类</label>
+                        <select id="appCategory">
+                            <option value="教育">教育</option>
+                            <option value="音乐">音乐</option>
+                            <option value="工具">工具</option>
+                            <option value="娱乐">娱乐</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>目标地址 *</label>
+                    <input type="text" id="appTarget" placeholder="例如：http://localhost:3001">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>主题色</label>
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="appColor" value="#667eea">
+                            <input type="text" id="appColorText" value="#667eea" style="flex: 1;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label style="visibility: hidden;">占位</label>
+                        <label class="checkbox-group">
+                            <input type="checkbox" id="appEnabled" checked>
+                            <span>启用此应用</span>
+                        </label>
+                    </div>
+                </div>
+
+                <label class="checkbox-group" style="margin-top: 10px;">
+                    <input type="checkbox" id="appShowInDashboard" checked>
+                    <span>在首页仪表板显示</span>
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('appModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveApp()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 模型编辑模态框 -->
+    <div id="modelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modelModalTitle">添加 AI 模型</h3>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modelId">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>模型名称 *</label>
+                        <input type="text" id="modelName" placeholder="例如：Claude">
+                    </div>
+                    <div class="form-group">
+                        <label>提供商 *</label>
+                        <select id="modelProvider">
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="openai">OpenAI (GPT)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>模型 ID *</label>
+                    <input type="text" id="modelModelId" placeholder="例如：claude-3-sonnet-20240229">
+                </div>
+
+                <div class="form-group">
+                    <label>API Key *</label>
+                    <input type="password" id="modelApiKey" placeholder="输入您的 API Key">
+                    <small style="color: #666; margin-top: 5px; display: block;">您的 API Key 将安全保存在服务器配置文件中</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Base URL</label>
+                    <input type="text" id="modelBaseUrl" placeholder="例如：https://api.anthropic.com">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="checkbox-group">
+                            <input type="checkbox" id="modelEnabled" checked>
+                            <span>启用此模型</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-group">
+                            <input type="checkbox" id="modelDefault">
+                            <span>设为默认模型</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('modelModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveModel()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let apps = [];
+        let aiModels = [];
+        let settings = {};
+
+        // Tab 切换
+        document.querySelectorAll('.header nav a[data-tab]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tab = link.dataset.tab;
+
+                document.querySelectorAll('.header nav a').forEach(a => a.classList.remove('active'));
+                link.classList.add('active');
+
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`tab-${tab}`).classList.add('active');
+            });
+        });
+
+        // 颜色选择器同步
+        document.getElementById('appColor').addEventListener('change', (e) => {
+            document.getElementById('appColorText').value = e.target.value;
+        });
+        document.getElementById('appColorText').addEventListener('change', (e) => {
+            document.getElementById('appColor').value = e.target.value;
+        });
+
+        // 加载数据
+        async function loadData() {
+            await Promise.all([loadApps(), loadAiModels(), loadSettings()]);
+        }
+
+        async function loadApps() {
+            try {
+                const response = await fetch('/api/apps');
+                const result = await response.json();
+                if (result.success) {
+                    apps = result.data;
+                    renderAppList();
+                }
+            } catch (err) {
+                showToast('加载应用失败', 'error');
+            }
+        }
+
+        async function loadAiModels() {
+            try {
+                const response = await fetch('/api/ai-models');
+                const result = await response.json();
+                if (result.success) {
+                    aiModels = result.data;
+                    renderModelList();
+                    updateModelSelector();
+                }
+            } catch (err) {
+                showToast('加载 AI 模型失败', 'error');
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const result = await response.json();
+                if (result.success) {
+                    settings = result.data;
+                    document.getElementById('settingTitle').value = settings.portalTitle || '';
+                    document.getElementById('settingEnableAi').checked = settings.enableAiChat !== false;
+                    document.getElementById('settingTimeout').value = settings.proxyTimeout || 30000;
+                }
+            } catch (err) {
+                console.error('加载设置失败:', err);
+            }
+        }
+
+        // 渲染应用列表
+        function renderAppList() {
+            const container = document.getElementById('appList');
+            if (apps.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无应用，点击上方按钮添加</p>';
+                return;
+            }
+
+            container.innerHTML = apps.map(app => `
+                <div class="app-item">
+                    <div class="app-item-icon">${app.icon}</div>
+                    <div class="app-item-info">
+                        <div class="app-item-name">
+                            ${app.name}
+                            <span class="status-badge ${app.enabled ? 'enabled' : 'disabled'}">
+                                ${app.enabled ? '已启用' : '已禁用'}
+                            </span>
+                        </div>
+                        <div class="app-item-meta">
+                            ${app.description || '无描述'} | ${app.category} | ${app.targetUrl}
+                        </div>
+                    </div>
+                    <div class="app-item-actions">
+                        <button class="btn btn-secondary" onclick="editApp('${app.id}')">编辑</button>
+                        <button class="btn btn-danger" onclick="deleteApp('${app.id}')">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 渲染模型列表
+        function renderModelList() {
+            const container = document.getElementById('modelList');
+            if (aiModels.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无模型，点击上方按钮添加</p>';
+                return;
+            }
+
+            container.innerHTML = aiModels.map(model => `
+                <div class="model-item" style="border-left-color: ${model.enabled ? '#667eea' : '#ccc'}">
+                    <div class="model-item-header">
+                        <div>
+                            <div class="model-item-name">
+                                ${model.name}
+                                ${model.default ? '<span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-left: 10px;">默认</span>' : ''}
+                            </div>
+                            <div class="model-item-provider">
+                                提供商: ${model.provider} | 模型: ${model.model}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" ${model.enabled ? 'checked' : ''}
+                                    onchange="toggleModel('${model.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <button class="btn btn-secondary" onclick="editModel('${model.id}')">编辑</button>
+                            <button class="btn btn-danger" onclick="deleteModel('${model.id}')">删除</button>
+                        </div>
+                    </div>
+                    <div class="model-item-config">
+                        Base URL: ${model.baseUrl} | API Key: ${model.apiKey ? '已配置' : '未配置'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 更新模型选择器
+        function updateModelSelector() {
+            const selector = document.getElementById('settingDefaultModel');
+            const enabledModels = aiModels.filter(m => m.enabled);
+
+            if (enabledModels.length === 0) {
+                selector.innerHTML = '<option value="">无可用模型</option>';
+                return;
+            }
+
+            selector.innerHTML = enabledModels.map(m =>
+                `<option value="${m.id}" ${m.default ? 'selected' : ''}>${m.name}</option>`
+            ).join('');
+        }
+
+        // 模态框操作
+        function openAppModal(appId = null) {
+            const modal = document.getElementById('appModal');
+            const title = document.getElementById('appModalTitle');
+
+            if (appId) {
+                const app = apps.find(a => a.id === appId);
+                if (!app) return;
+
+                title.textContent = '编辑应用';
+                document.getElementById('appId').value = app.id;
+                document.getElementById('appIdInput').value = app.id;
+                document.getElementById('appIdInput').disabled = true;
+                document.getElementById('appName').value = app.name;
+                document.getElementById('appDesc').value = app.description || '';
+                document.getElementById('appIcon').value = app.icon;
+                document.getElementById('appCategory').value = app.category;
+                document.getElementById('appTarget').value = app.targetUrl;
+                document.getElementById('appColor').value = app.color;
+                document.getElementById('appColorText').value = app.color;
+                document.getElementById('appEnabled').checked = app.enabled;
+                document.getElementById('appShowInDashboard').checked = app.showInDashboard !== false;
+            } else {
+                title.textContent = '添加应用';
+                document.getElementById('appId').value = '';
+                document.getElementById('appIdInput').value = '';
+                document.getElementById('appIdInput').disabled = false;
+                document.getElementById('appName').value = '';
+                document.getElementById('appDesc').value = '';
+                document.getElementById('appIcon').value = '📱';
+                document.getElementById('appCategory').value = '其他';
+                document.getElementById('appTarget').value = '';
+                document.getElementById('appColor').value = '#667eea';
+                document.getElementById('appColorText').value = '#667eea';
+                document.getElementById('appEnabled').checked = true;
+                document.getElementById('appShowInDashboard').checked = true;
+            }
+
+            modal.classList.add('active');
+        }
+
+        function openModelModal(modelId = null) {
+            const modal = document.getElementById('modelModal');
+            const title = document.getElementById('modelModalTitle');
+
+            if (modelId) {
+                const model = aiModels.find(m => m.id === modelId);
+                if (!model) return;
+
+                title.textContent = '编辑 AI 模型';
+                document.getElementById('modelId').value = model.id;
+                document.getElementById('modelName').value = model.name;
+                document.getElementById('modelProvider').value = model.provider;
+                document.getElementById('modelModelId').value = model.model;
+                document.getElementById('modelApiKey').value = '********';
+                document.getElementById('modelBaseUrl').value = model.baseUrl || '';
+                document.getElementById('modelEnabled').checked = model.enabled;
+                document.getElementById('modelDefault').checked = model.default;
+            } else {
+                title.textContent = '添加 AI 模型';
+                document.getElementById('modelId').value = '';
+                document.getElementById('modelName').value = '';
+                document.getElementById('modelProvider').value = 'anthropic';
+                document.getElementById('modelModelId').value = '';
+                document.getElementById('modelApiKey').value = '';
+                document.getElementById('modelBaseUrl').value = '';
+                document.getElementById('modelEnabled').checked = true;
+                document.getElementById('modelDefault').checked = false;
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // 保存应用
+        async function saveApp() {
+            const id = document.getElementById('appId').value;
+            const appId = document.getElementById('appIdInput').value;
+            const name = document.getElementById('appName').value;
+            const targetUrl = document.getElementById('appTarget').value;
+
+            if (!appId || !name || !targetUrl) {
+                showToast('请填写必填项', 'error');
+                return;
+            }
+
+            const data = {
+                id: appId,
+                name: name,
+                description: document.getElementById('appDesc').value,
+                icon: document.getElementById('appIcon').value,
+                category: document.getElementById('appCategory').value,
+                targetUrl: targetUrl,
+                color: document.getElementById('appColor').value,
+                enabled: document.getElementById('appEnabled').checked,
+                showInDashboard: document.getElementById('appShowInDashboard').checked
+            };
+
+            try {
+                const url = id ? `/api/apps/${id}` : '/api/apps';
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(id ? '应用已更新' : '应用已添加', 'success');
+                    closeModal('appModal');
+                    loadApps();
+                } else {
+                    showToast(result.message || '保存失败', 'error');
+                }
+            } catch (err) {
+                showToast('保存失败: ' + err.message, 'error');
+            }
+        }
+
+        // 编辑应用
+        function editApp(id) {
+            openAppModal(id);
+        }
+
+        // 删除应用
+        async function deleteApp(id) {
+            if (!confirm('确定要删除此应用吗？')) return;
+
+            try {
+                const response = await fetch(`/api/apps/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('应用已删除', 'success');
+                    loadApps();
+                } else {
+                    showToast(result.message || '删除失败', 'error');
+                }
+            } catch (err) {
+                showToast('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        // 保存模型
+        async function saveModel() {
+            const id = document.getElementById('modelId').value;
+            const name = document.getElementById('modelName').value;
+            const model = document.getElementById('modelModelId').value;
+            const apiKey = document.getElementById('modelApiKey').value;
+
+            if (!name || !model) {
+                showToast('请填写必填项', 'error');
+                return;
+            }
+
+            const data = {
+                name: name,
+                provider: document.getElementById('modelProvider').value,
+                model: model,
+                apiKey: apiKey,
+                baseUrl: document.getElementById('modelBaseUrl').value,
+                enabled: document.getElementById('modelEnabled').checked,
+                default: document.getElementById('modelDefault').checked
+            };
+
+            try {
+                const url = id ? `/api/ai-models/${id}` : '/api/ai-models';
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(id ? '模型已更新' : '模型已添加', 'success');
+                    closeModal('modelModal');
+                    loadAiModels();
+                } else {
+                    showToast(result.message || '保存失败', 'error');
+                }
+            } catch (err) {
+                showToast('保存失败: ' + err.message, 'error');
+            }
+        }
+
+        // 编辑模型
+        function editModel(id) {
+            openModelModal(id);
+        }
+
+        // 删除模型
+        async function deleteModel(id) {
+            if (!confirm('确定要删除此模型吗？')) return;
+
+            try {
+                const response = await fetch(`/api/ai-models/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('模型已删除', 'success');
+                    loadAiModels();
+                } else {
+                    showToast(result.message || '删除失败', 'error');
+                }
+            } catch (err) {
+                showToast('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        // 切换模型启用状态
+        async function toggleModel(id, enabled) {
+            try {
+                const response = await fetch(`/api/ai-models/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(enabled ? '模型已启用' : '模型已禁用', 'success');
+                    loadAiModels();
+                } else {
+                    showToast(result.message || '操作失败', 'error');
+                }
+            } catch (err) {
+                showToast('操作失败: ' + err.message, 'error');
+            }
+        }
+
+        // 保存全局设置
+        async function saveSettings() {
+            const settings = {
+                portalTitle: document.getElementById('settingTitle').value,
+                defaultAiModel: document.getElementById('settingDefaultModel').value,
+                enableAiChat: document.getElementById('settingEnableAi').checked,
+                proxyTimeout: parseInt(document.getElementById('settingTimeout').value) || 30000
+            };
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('设置已保存', 'success');
+                } else {
+                    showToast(result.message || '保存失败', 'error');
+                }
+            } catch (err) {
+                showToast('保存失败: ' + err.message, 'error');
+            }
+        }
+
+        // 显示 Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>

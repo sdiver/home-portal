@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 对话 - 家庭应用中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header a {
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+
+        .header a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.3s;
+        }
+
+        .new-chat-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .model-info {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .model-info label {
+            display: block;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .model-info select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .history-item {
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-item:hover, .history-item.active {
+            background: #f0f0f0;
+        }
+
+        .history-item-title {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.9rem;
+        }
+
+        .history-item-delete {
+            opacity: 0;
+            color: #999;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .history-item:hover .history-item-delete {
+            opacity: 1;
+        }
+
+        .history-item-delete:hover {
+            color: #f44336;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            max-width: 80%;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            margin-left: auto;
+        }
+
+        .message-content {
+            padding: 15px 20px;
+            border-radius: 18px;
+            line-height: 1.6;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .message-content {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-info {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 5px;
+            padding: 0 10px;
+        }
+
+        .message.user .message-info {
+            text-align: right;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 15px 20px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 15px 60px 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1rem;
+            resize: none;
+            min-height: 54px;
+            max-height: 150px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: translateY(-50%);
+        }
+
+        .system-prompt {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .system-prompt label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-right: 10px;
+        }
+
+        .system-prompt input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            width: 300px;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .welcome-message h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-message p {
+            max-width: 500px;
+            margin: 0 auto 30px;
+            line-height: 1.6;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .suggestion-chip {
+            padding: 10px 20px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .suggestion-chip:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+        }
+
+        .code-block {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .code-block code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .system-prompt input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🤖 AI 对话</h1>
+        <nav>
+            <a href="/">🏠 返回首页</a>
+            <a href="/admin">⚙️ 管理</a>
+        </nav>
+    </header>
+
+    <div class="main">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button class="new-chat-btn" onclick="startNewChat()">+ 新建对话</button>
+            </div>
+            <div class="model-info">
+                <label>选择模型</label>
+                <select id="modelSelector">
+                    <option value="">加载中...</option>
+                </select>
+            </div>
+            <div class="chat-history" id="chatHistory">
+                <!-- 历史记录将动态插入 -->
+            </div>
+        </aside>
+
+        <div class="chat-container">
+            <div class="system-prompt">
+                <label>系统提示词:</label>
+                <input type="text" id="systemPrompt" placeholder="可选：设置 AI 的角色或行为方式" value="">
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <h2>有什么可以帮您？</h2>
+                    <p>选择一个 AI 模型开始对话。您可以询问问题、寻求建议、创作内容或进行任何对话。</p>
+                    <div class="suggestion-chips">
+                        <button class="suggestion-chip" onclick="sendSuggestion('帮我写一首关于春天的诗')">帮我写一首关于春天的诗</button>
+                        <button class="suggestion-chip" onclick="sendSuggestion('解释什么是机器学习')">解释什么是机器学习</button>
+                        <button class="suggestion-chip" onclick="sendSuggestion('推荐一些适合孩子的教育活动')">推荐一些适合孩子的教育活动</button>
+                        <button class="suggestion-chip" onclick="sendSuggestion('帮我制定一个学习计划')">帮我制定一个学习计划</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="input-container">
+                    <textarea
+                        class="chat-input"
+                        id="chatInput"
+                        placeholder="输入您的问题..."
+                        rows="1"
+                        onkeypress="handleKeyPress(event)"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let aiModels = [];
+        let currentChat = {
+            id: Date.now(),
+            messages: [],
+            title: '新对话'
+        };
+        let chatHistoryList = [];
+        let isStreaming = false;
+
+        // 加载 AI 模型
+        async function loadAiModels() {
+            try {
+                const response = await fetch('/api/ai-models/enabled');
+                const result = await response.json();
+
+                if (result.success) {
+                    aiModels = result.data;
+                    const selector = document.getElementById('modelSelector');
+
+                    if (aiModels.length === 0) {
+                        selector.innerHTML = '<option value="">未配置模型</option>';
+                        return;
+                    }
+
+                    selector.innerHTML = aiModels.map(m =>
+                        `<option value="${m.id}" ${m.default ? 'selected' : ''}>${m.name}</option>`
+                    ).join('');
+                }
+            } catch (err) {
+                console.error('加载 AI 模型失败:', err);
+            }
+        }
+
+        // 处理键盘事件
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // 发送建议
+        function sendSuggestion(text) {
+            document.getElementById('chatInput').value = text;
+            sendMessage();
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const messagesContainer = document.getElementById('chatMessages');
+            const modelId = document.getElementById('modelSelector').value;
+            const systemPrompt = document.getElementById('systemPrompt').value;
+
+            const message = input.value.trim();
+            if (!message || isStreaming) return;
+
+            // 隐藏欢迎消息
+            if (currentChat.messages.length === 0) {
+                messagesContainer.innerHTML = '';
+                currentChat.title = message.slice(0, 20) + (message.length > 20 ? '...' : '');
+            }
+
+            // 添加用户消息
+            currentChat.messages.push({ role: 'user', content: message });
+
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = 'message user';
+            userMsgDiv.innerHTML = `
+                <div class="message-content">${escapeHtml(message)}</div>
+                <div class="message-info">您</div>
+            `;
+            messagesContainer.appendChild(userMsgDiv);
+
+            input.value = '';
+            input.rows = 1;
+            sendBtn.disabled = true;
+            isStreaming = true;
+
+            // 创建 AI 消息占位
+            const aiMsgDiv = document.createElement('div');
+            aiMsgDiv.className = 'message ai';
+            aiMsgDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                    </div>
+                </div>
+                <div class="message-info">AI</div>
+            `;
+            messagesContainer.appendChild(aiMsgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            try {
+                // 使用流式 API
+                const response = await fetch('/api/ai/chat/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        modelId: modelId || undefined,
+                        systemPrompt: systemPrompt || undefined,
+                        history: currentChat.messages.slice(0, -1)
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+
+                aiMsgDiv.querySelector('.message-content').innerHTML = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.content) {
+                                    fullContent += parsed.content;
+                                    aiMsgDiv.querySelector('.message-content').innerHTML = formatContent(fullContent);
+                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                }
+                                if (parsed.error) {
+                                    throw new Error(parsed.error);
+                                }
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
+                        }
+                    }
+                }
+
+                currentChat.messages.push({ role: 'assistant', content: fullContent });
+                updateChatHistory();
+
+            } catch (err) {
+                aiMsgDiv.querySelector('.message-content').innerHTML =
+                    `<span style="color: #f44336;">请求失败: ${err.message}</span>`;
+            } finally {
+                sendBtn.disabled = false;
+                isStreaming = false;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+
+        // 格式化内容
+        function formatContent(content) {
+            // 转义 HTML
+            content = escapeHtml(content);
+
+            // 代码块
+            content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="code-block"><code>$2</code></pre>');
+
+            // 行内代码
+            content = content.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // 粗体
+            content = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+            // 斜体
+            content = content.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+            // 换行
+            content = content.replace(/\n/g, '<br>');
+
+            return content;
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 新建对话
+        function startNewChat() {
+            currentChat = {
+                id: Date.now(),
+                messages: [],
+                title: '新对话'
+            };
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="welcome-message">
+                    <h2>有什么可以帮您？</h2>
+                    <p>选择一个 AI 模型开始对话。您可以询问问题、寻求建议、创作内容或进行任何对话。</p>
+                    <div class="suggestion-chips">
+                        <button class="suggestion-chip" onclick="sendSuggestion('帮我写一首关于春天的诗')">帮我写一首关于春天的诗</button>
+                        <button class="suggestion-chip" onclick="sendSuggestion('解释什么是机器学习')">解释什么是机器学习</button>
+                        <button class="suggestion-chip" onclick="sendSuggestion('推荐一些适合孩子的教育活动')">推荐一些适合孩子的教育活动</button>
+                        <button class="suggestion-chip" onclick="sendSuggestion('帮我制定一个学习计划')">帮我制定一个学习计划</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('chatInput').value = '';
+            updateChatHistory();
+        }
+
+        // 更新聊天历史
+        function updateChatHistory() {
+            const existingIndex = chatHistoryList.findIndex(c => c.id === currentChat.id);
+            if (existingIndex >= 0) {
+                chatHistoryList[existingIndex] = currentChat;
+            } else {
+                chatHistoryList.unshift(currentChat);
+            }
+            renderChatHistory();
+        }
+
+        // 渲染聊天历史
+        function renderChatHistory() {
+            const container = document.getElementById('chatHistory');
+            container.innerHTML = chatHistoryList.map(chat => `
+                <div class="history-item ${chat.id === currentChat.id ? 'active' : ''}" onclick="loadChat(${chat.id})">
+                    <span>💬</span>
+                    <span class="history-item-title">${escapeHtml(chat.title)}</span>
+                    <span class="history-item-delete" onclick="event.stopPropagation(); deleteChat(${chat.id})">×</span>
+                </div>
+            `).join('');
+        }
+
+        // 加载历史对话
+        function loadChat(id) {
+            const chat = chatHistoryList.find(c => c.id === id);
+            if (!chat) return;
+
+            currentChat = chat;
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = '';
+
+            for (const msg of chat.messages) {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${msg.role === 'user' ? 'user' : 'ai'}`;
+                msgDiv.innerHTML = `
+                    <div class="message-content">${formatContent(msg.content)}</div>
+                    <div class="message-info">${msg.role === 'user' ? '您' : 'AI'}</div>
+                `;
+                messagesContainer.appendChild(msgDiv);
+            }
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            renderChatHistory();
+        }
+
+        // 删除历史对话
+        function deleteChat(id) {
+            chatHistoryList = chatHistoryList.filter(c => c.id !== id);
+            if (currentChat.id === id) {
+                startNewChat();
+            }
+            renderChatHistory();
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAiModels();
+
+            // 自动调整输入框高度
+            const input = document.getElementById('chatInput');
+            input.addEventListener('input', () => {
+                input.rows = 1;
+                const rows = Math.min(5, Math.ceil(input.scrollHeight / 30));
+                input.rows = rows;
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,567 @@
+const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
+
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+// 配置文件路径
+const CONFIG_PATH = path.join(__dirname, 'config', 'apps.json');
+
+// 中间件
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+// 加载配置
+function loadConfig() {
+    try {
+        const data = fs.readFileSync(CONFIG_PATH, 'utf8');
+        return JSON.parse(data);
+    } catch (err) {
+        console.error('加载配置失败:', err);
+        return { apps: [], aiModels: [], settings: {} };
+    }
+}
+
+// 保存配置
+function saveConfig(config) {
+    try {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+        return true;
+    } catch (err) {
+        console.error('保存配置失败:', err);
+        return false;
+    }
+}
+
+// 动态创建代理中间件
+function createDynamicProxy(targetUrl) {
+    return createProxyMiddleware({
+        target: targetUrl,
+        changeOrigin: true,
+        ws: true,
+        timeout: 30000,
+        proxyTimeout: 30000,
+        onError: (err, req, res) => {
+            console.error('代理错误:', err.message);
+            res.status(502).json({
+                error: '服务不可用',
+                message: '目标应用可能未启动',
+                target: targetUrl
+            });
+        },
+        onProxyReq: (proxyReq, req, res) => {
+            // 添加全局配置到请求头（使用 base64 编码避免非法字符）
+            const config = loadConfig();
+            const configData = Buffer.from(JSON.stringify({
+                aiModels: config.aiModels.filter(m => m.enabled),
+                settings: config.settings
+            })).toString('base64');
+            proxyReq.setHeader('X-Portal-Config', configData);
+        }
+    });
+}
+
+// ==================== API 路由 ====================
+
+// 获取所有应用配置
+app.get('/api/apps', (req, res) => {
+    const config = loadConfig();
+    res.json({ success: true, data: config.apps });
+});
+
+// 获取单个应用
+app.get('/api/apps/:id', (req, res) => {
+    const config = loadConfig();
+    const app_config = config.apps.find(a => a.id === req.params.id);
+    if (!app_config) {
+        return res.status(404).json({ success: false, message: '应用不存在' });
+    }
+    res.json({ success: true, data: app_config });
+});
+
+// 添加新应用
+app.post('/api/apps', (req, res) => {
+    const config = loadConfig();
+    const newApp = {
+        id: req.body.id || uuidv4(),
+        name: req.body.name,
+        description: req.body.description || '',
+        icon: req.body.icon || '📱',
+        url: `/app/${req.body.id || uuidv4()}`,
+        targetUrl: req.body.targetUrl,
+        category: req.body.category || '其他',
+        color: req.body.color || '#666666',
+        enabled: req.body.enabled !== false,
+        showInDashboard: req.body.showInDashboard !== false,
+        createdAt: new Date().toISOString()
+    };
+
+    config.apps.push(newApp);
+    if (saveConfig(config)) {
+        // 动态注册新代理
+        setupProxyRoutes();
+        res.json({ success: true, data: newApp });
+    } else {
+        res.status(500).json({ success: false, message: '保存失败' });
+    }
+});
+
+// 更新应用
+app.put('/api/apps/:id', (req, res) => {
+    const config = loadConfig();
+    const index = config.apps.findIndex(a => a.id === req.params.id);
+    if (index === -1) {
+        return res.status(404).json({ success: false, message: '应用不存在' });
+    }
+
+    config.apps[index] = { ...config.apps[index], ...req.body };
+    if (saveConfig(config)) {
+        setupProxyRoutes();
+        res.json({ success: true, data: config.apps[index] });
+    } else {
+        res.status(500).json({ success: false, message: '保存失败' });
+    }
+});
+
+// 删除应用
+app.delete('/api/apps/:id', (req, res) => {
+    const config = loadConfig();
+    config.apps = config.apps.filter(a => a.id !== req.params.id);
+    if (saveConfig(config)) {
+        setupProxyRoutes();
+        res.json({ success: true, message: '删除成功' });
+    } else {
+        res.status(500).json({ success: false, message: '删除失败' });
+    }
+});
+
+// ==================== AI 模型配置 API ====================
+
+// 获取所有 AI 模型配置
+app.get('/api/ai-models', (req, res) => {
+    const config = loadConfig();
+    // 返回时不包含 API Key（安全考虑）
+    const safeModels = config.aiModels.map(m => ({
+        ...m,
+        apiKey: m.apiKey ? '********' : ''
+    }));
+    res.json({ success: true, data: safeModels });
+});
+
+// 获取启用的 AI 模型（供前端使用）
+app.get('/api/ai-models/enabled', (req, res) => {
+    const config = loadConfig();
+    const enabledModels = config.aiModels
+        .filter(m => m.enabled)
+        .map(m => ({
+            id: m.id,
+            name: m.name,
+            provider: m.provider,
+            model: m.model,
+            default: m.default
+        }));
+    res.json({ success: true, data: enabledModels });
+});
+
+// 更新 AI 模型配置
+app.put('/api/ai-models/:id', (req, res) => {
+    const config = loadConfig();
+    const index = config.aiModels.findIndex(m => m.id === req.params.id);
+    if (index === -1) {
+        return res.status(404).json({ success: false, message: '模型不存在' });
+    }
+
+    const { apiKey, ...otherUpdates } = req.body;
+
+    // 如果提供了新的 API Key，则更新；否则保留原值
+    if (apiKey && apiKey !== '********') {
+        otherUpdates.apiKey = apiKey;
+    } else if (apiKey === '') {
+        otherUpdates.apiKey = '';
+    }
+
+    config.aiModels[index] = { ...config.aiModels[index], ...otherUpdates };
+
+    // 如果设置为默认，取消其他默认
+    if (otherUpdates.default) {
+        config.aiModels.forEach((m, i) => {
+            if (i !== index) m.default = false;
+        });
+    }
+
+    if (saveConfig(config)) {
+        res.json({ success: true, data: config.aiModels[index] });
+    } else {
+        res.status(500).json({ success: false, message: '保存失败' });
+    }
+});
+
+// 添加新的 AI 模型
+app.post('/api/ai-models', (req, res) => {
+    const config = loadConfig();
+    const newModel = {
+        id: req.body.id || uuidv4(),
+        name: req.body.name,
+        provider: req.body.provider,
+        apiKey: req.body.apiKey || '',
+        baseUrl: req.body.baseUrl,
+        model: req.body.model,
+        enabled: req.body.enabled !== false,
+        default: false
+    };
+
+    config.aiModels.push(newModel);
+    if (saveConfig(config)) {
+        res.json({ success: true, data: newModel });
+    } else {
+        res.status(500).json({ success: false, message: '保存失败' });
+    }
+});
+
+// 删除 AI 模型
+app.delete('/api/ai-models/:id', (req, res) => {
+    const config = loadConfig();
+    config.aiModels = config.aiModels.filter(m => m.id !== req.params.id);
+    if (saveConfig(config)) {
+        res.json({ success: true, message: '删除成功' });
+    } else {
+        res.status(500).json({ success: false, message: '删除失败' });
+    }
+});
+
+// ==================== AI 代理 API ====================
+
+// AI 聊天接口
+app.post('/api/ai/chat', async (req, res) => {
+    const { message, modelId, systemPrompt, history = [] } = req.body;
+    const config = loadConfig();
+
+    const modelConfig = modelId
+        ? config.aiModels.find(m => m.id === modelId)
+        : config.aiModels.find(m => m.default) || config.aiModels[0];
+
+    if (!modelConfig || !modelConfig.enabled) {
+        return res.status(400).json({ success: false, message: 'AI 模型未配置或未启用' });
+    }
+
+    if (!modelConfig.apiKey) {
+        return res.status(400).json({ success: false, message: 'API Key 未配置' });
+    }
+
+    try {
+        let response;
+
+        if (modelConfig.provider === 'anthropic') {
+            const messages = history.map(h => ({
+                role: h.role,
+                content: h.content
+            }));
+            messages.push({ role: 'user', content: message });
+
+            response = await axios.post(
+                `${modelConfig.baseUrl}/v1/messages`,
+                {
+                    model: modelConfig.model,
+                    max_tokens: 4096,
+                    system: systemPrompt || 'You are a helpful assistant.',
+                    messages: messages
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': modelConfig.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    }
+                }
+            );
+
+            res.json({
+                success: true,
+                data: {
+                    content: response.data.content[0].text,
+                    model: modelConfig.model,
+                    usage: response.data.usage
+                }
+            });
+        } else if (modelConfig.provider === 'openai') {
+            const messages = [
+                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                ...history.map(h => ({ role: h.role, content: h.content })),
+                { role: 'user', content: message }
+            ];
+
+            response = await axios.post(
+                `${modelConfig.baseUrl}/v1/chat/completions`,
+                {
+                    model: modelConfig.model,
+                    messages: messages
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${modelConfig.apiKey}`
+                    }
+                }
+            );
+
+            res.json({
+                success: true,
+                data: {
+                    content: response.data.choices[0].message.content,
+                    model: modelConfig.model,
+                    usage: response.data.usage
+                }
+            });
+        } else {
+            res.status(400).json({ success: false, message: '不支持的 AI 提供商' });
+        }
+    } catch (error) {
+        console.error('AI API 错误:', error.response?.data || error.message);
+        res.status(500).json({
+            success: false,
+            message: 'AI 请求失败',
+            error: error.response?.data?.error?.message || error.message
+        });
+    }
+});
+
+// AI 流式聊天接口
+app.post('/api/ai/chat/stream', async (req, res) => {
+    const { message, modelId, systemPrompt, history = [] } = req.body;
+    const config = loadConfig();
+
+    const modelConfig = modelId
+        ? config.aiModels.find(m => m.id === modelId)
+        : config.aiModels.find(m => m.default) || config.aiModels[0];
+
+    if (!modelConfig || !modelConfig.enabled) {
+        return res.status(400).json({ success: false, message: 'AI 模型未配置或未启用' });
+    }
+
+    if (!modelConfig.apiKey) {
+        return res.status(400).json({ success: false, message: 'API Key 未配置' });
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    try {
+        if (modelConfig.provider === 'anthropic') {
+            const messages = history.map(h => ({
+                role: h.role,
+                content: h.content
+            }));
+            messages.push({ role: 'user', content: message });
+
+            const response = await axios.post(
+                `${modelConfig.baseUrl}/v1/messages`,
+                {
+                    model: modelConfig.model,
+                    max_tokens: 4096,
+                    system: systemPrompt || 'You are a helpful assistant.',
+                    messages: messages,
+                    stream: true
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': modelConfig.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    responseType: 'stream'
+                }
+            );
+
+            response.data.on('data', (chunk) => {
+                const lines = chunk.toString().split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') {
+                            res.write('data: [DONE]\n\n');
+                        } else {
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.type === 'content_block_delta') {
+                                    res.write(`data: ${JSON.stringify({ content: parsed.delta.text })}\n\n`);
+                                }
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
+                        }
+                    }
+                }
+            });
+
+            response.data.on('end', () => {
+                res.end();
+            });
+        } else if (modelConfig.provider === 'openai') {
+            const messages = [
+                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                ...history.map(h => ({ role: h.role, content: h.content })),
+                { role: 'user', content: message }
+            ];
+
+            const response = await axios.post(
+                `${modelConfig.baseUrl}/v1/chat/completions`,
+                {
+                    model: modelConfig.model,
+                    messages: messages,
+                    stream: true
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${modelConfig.apiKey}`
+                    },
+                    responseType: 'stream'
+                }
+            );
+
+            response.data.on('data', (chunk) => {
+                const lines = chunk.toString().split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') {
+                            res.write('data: [DONE]\n\n');
+                        } else {
+                            try {
+                                const parsed = JSON.parse(data);
+                                const content = parsed.choices[0]?.delta?.content;
+                                if (content) {
+                                    res.write(`data: ${JSON.stringify({ content })}\n\n`);
+                                }
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
+                        }
+                    }
+                }
+            });
+
+            response.data.on('end', () => {
+                res.end();
+            });
+        }
+    } catch (error) {
+        console.error('AI 流式请求错误:', error.message);
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+    }
+});
+
+// ==================== 全局配置 API ====================
+
+// 获取全局配置
+app.get('/api/settings', (req, res) => {
+    const config = loadConfig();
+    res.json({ success: true, data: config.settings });
+});
+
+// 更新全局配置
+app.put('/api/settings', (req, res) => {
+    const config = loadConfig();
+    config.settings = { ...config.settings, ...req.body };
+    if (saveConfig(config)) {
+        res.json({ success: true, data: config.settings });
+    } else {
+        res.status(500).json({ success: false, message: '保存失败' });
+    }
+});
+
+// 健康检查
+app.get('/api/health', (req, res) => {
+    const config = loadConfig();
+    const appStatuses = config.apps.map(a => ({
+        id: a.id,
+        name: a.name,
+        enabled: a.enabled,
+        targetUrl: a.targetUrl
+    }));
+
+    res.json({
+        success: true,
+        data: {
+            status: 'running',
+            timestamp: new Date().toISOString(),
+            portalUrl: `http://localhost:${PORT}`,
+            apps: appStatuses,
+            aiModels: config.aiModels.filter(m => m.enabled).length
+        }
+    });
+});
+
+// ==================== 代理路由设置 ====================
+
+// 存储已注册的代理路由
+let registeredProxies = new Map();
+
+function setupProxyRoutes() {
+    const config = loadConfig();
+
+    // 清除现有代理路由
+    registeredProxies.forEach((middleware, path) => {
+        app._router.stack = app._router.stack.filter(layer => {
+            return !(layer.route && layer.route.path === path);
+        });
+    });
+    registeredProxies.clear();
+
+    // 注册新的代理路由
+    config.apps.forEach(appConfig => {
+        if (appConfig.enabled && appConfig.targetUrl) {
+            const proxyPath = appConfig.url || `/app/${appConfig.id}`;
+            const proxyMiddleware = createDynamicProxy(appConfig.targetUrl);
+
+            app.use(proxyPath, proxyMiddleware);
+            app.use(`${proxyPath}/*`, proxyMiddleware);
+
+            registeredProxies.set(proxyPath, proxyMiddleware);
+            console.log(`✅ 代理已注册: ${proxyPath} -> ${appConfig.targetUrl}`);
+        }
+    });
+}
+
+// ==================== 页面路由 ====================
+
+// 管理后台
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// AI 聊天页面
+app.get('/ai-chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'ai-chat.html'));
+});
+
+// 主页 - 应用仪表板
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 启动服务器
+app.listen(PORT, () => {
+    console.log(`
+╔════════════════════════════════════════════════════════╗
+║            🏠 家庭应用管理门户已启动                      ║
+╠════════════════════════════════════════════════════════╣
+║  主页面: http://localhost:${PORT}                          ║
+║  管理后台: http://localhost:${PORT}/admin                  ║
+║  AI 聊天: http://localhost:${PORT}/ai-chat                 ║
+╚════════════════════════════════════════════════════════╝
+    `);
+
+    // 初始设置代理路由
+    setupProxyRoutes();
+});
+
+module.exports = app;
