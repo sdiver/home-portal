@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # 家庭应用中心 - 三合一容器启动脚本
+# 必须在 homegate 根目录下执行（包含 portal/、parenting/、cello-practise/ 的目录）
 
 set -e
 
@@ -15,6 +16,28 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# 检查是否在正确的目录
+if [ ! -d "portal" ] || [ ! -d "parenting" ] || [ ! -d "cello-practise" ]; then
+    echo -e "${RED}❌ 错误：请在 homegate 根目录下执行此脚本${NC}"
+    echo ""
+    echo "正确的目录结构应该是："
+    echo "  homegate/"
+    echo "    ├── portal/"
+    echo "    ├── parenting/"
+    echo "    ├── cello-practise/"
+    echo "    ├── Dockerfile.all-in-one"
+    echo "    └── docker-compose.all-in-one.yml"
+    echo ""
+    echo "当前目录: $(pwd)"
+    exit 1
+fi
+
+# 检查必要文件
+if [ ! -f "Dockerfile.all-in-one" ]; then
+    echo -e "${RED}❌ 错误：找不到 Dockerfile.all-in-one${NC}"
+    exit 1
+fi
+
 # 检查 Docker
 if ! command -v docker &> /dev/null; then
     echo -e "${RED}❌ Docker 未安装${NC}"
@@ -26,8 +49,7 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
-# 创建必要目录
-echo "📁 创建数据目录..."
+echo -e "${BLUE}📁 创建数据目录...${NC}"
 mkdir -p parenting/data
 mkdir -p cello-practise/data
 mkdir -p cello-practise/uploads
@@ -43,7 +65,11 @@ if [ ! -f "cello-practise/backend/.env" ]; then
 fi
 
 echo ""
-echo "🔨 构建并启动三合一容器..."
+echo -e "${BLUE}🔨 构建并启动三合一容器...${NC}"
+echo "   构建上下文: $(pwd)"
+echo "   Dockerfile: ./Dockerfile.all-in-one"
+echo ""
+
 docker-compose -f docker-compose.all-in-one.yml up -d --build
 
 echo ""
@@ -52,7 +78,7 @@ sleep 5
 
 # 检查容器状态
 echo ""
-echo "🔍 检查服务状态..."
+echo -e "${BLUE}🔍 检查服务状态...${NC}"
 if docker ps --format '{{.Names}}' | grep -q "^homegate$"; then
     echo -e "${GREEN}✓ homegate 容器运行中${NC}"
 
