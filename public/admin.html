@@ -937,7 +937,7 @@
             };
 
             try {
-                const url = id ? `/api/apps/${id}` : '/api/apps';
+                const url = id ? `api/apps/${id}` : 'api/apps';
                 const method = id ? 'PUT' : 'POST';
 
                 const response = await fetch(url, {
@@ -1007,7 +1007,7 @@
             };
 
             try {
-                const url = id ? `/api/ai-models/${id}` : '/api/ai-models';
+                const url = id ? `api/ai-models/${id}` : 'api/ai-models';
                 const method = id ? 'PUT' : 'POST';
 
                 const response = await fetch(url, {
@@ -1057,7 +1057,7 @@
         // 切换模型启用状态
         async function toggleModel(id, enabled) {
             try {
-                const response = await fetch(`/api/ai-models/${id}`, {
+                const response = await fetch(`api/ai-models/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ enabled })
@@ -1086,7 +1086,7 @@
             };
 
             try {
-                const response = await fetch('/api/settings', {
+                const response = await fetch('api/settings', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(settings)
