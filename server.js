@@ -77,11 +77,15 @@ const apiRouter = express.Router();
 // 获取所有应用配置
 apiRouter.get('/apps', (req, res) => {
     const config = loadConfig();
-    // 添加 BASE_PATH 前缀到 url 字段
-    const appsWithBasePath = config.apps.map(app => ({
-        ...app,
-        url: `${BASE_PATH}${app.url || '/app/' + app.id}`
-    }));
+    // 添加 BASE_PATH 前缀到 url 字段（仅用于返回给前端，不保存到文件）
+    const appsWithBasePath = config.apps.map(app => {
+        // 确保 url 不包含重复的 BASE_PATH 前缀
+        const cleanUrl = (app.url || `/app/${app.id}`).replace(new RegExp(`^${BASE_PATH}`), '');
+        return {
+            ...app,
+            url: `${BASE_PATH}${cleanUrl}`
+        };
+    });
     res.json({ success: true, data: appsWithBasePath });
 });
 
@@ -130,7 +134,13 @@ apiRouter.put('/apps/:id', (req, res) => {
         return res.status(404).json({ success: false, message: '应用不存在' });
     }
 
-    config.apps[index] = { ...config.apps[index], ...req.body };
+    // 清理 url 字段中的 BASE_PATH 前缀，避免重复添加
+    const body = { ...req.body };
+    if (body.url) {
+        body.url = body.url.replace(new RegExp(`^${BASE_PATH}`), '');
+    }
+
+    config.apps[index] = { ...config.apps[index], ...body };
     if (saveConfig(config)) {
         setupProxyRoutes();
         res.json({ success: true, data: config.apps[index] });
@@ -533,11 +543,15 @@ function setupProxyRoutes() {
     // 注册新的代理路由
     config.apps.forEach(appConfig => {
         if (appConfig.enabled && appConfig.targetUrl) {
-            const proxyPath = appConfig.url || `/app/${appConfig.id}`;
+            // 使用 id 构建代理路径，避免 url 字段中的 BASE_PATH 前缀影响
+            const proxyPath = `/app/${appConfig.id}`;
             const proxyMiddleware = createDynamicProxy(appConfig.targetUrl);
 
             app.use(proxyPath, proxyMiddleware);
             app.use(`${proxyPath}/*`, proxyMiddleware);
+            // 同时注册带 BASE_PATH 前缀的路径
+            app.use(`${BASE_PATH}${proxyPath}`, proxyMiddleware);
+            app.use(`${BASE_PATH}${proxyPath}/*`, proxyMiddleware);
 
             registeredProxies.set(proxyPath, proxyMiddleware);
             console.log(`✅ 代理已注册: ${proxyPath} -> ${appConfig.targetUrl}`);
