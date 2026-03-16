@@ -81,7 +81,12 @@ app.use('/portal-home', (req, res, next) => {
 // 获取所有应用配置
 app.get('/api/apps', (req, res) => {
     const config = loadConfig();
-    res.json({ success: true, data: config.apps });
+    // 添加 BASE_PATH 前缀到 url 字段
+    const appsWithBasePath = config.apps.map(app => ({
+        ...app,
+        url: `${BASE_PATH}${app.url || '/app/' + app.id}`
+    }));
+    res.json({ success: true, data: appsWithBasePath });
 });
 
 // 获取单个应用
@@ -543,7 +548,7 @@ function setupProxyRoutes() {
 // ==================== 页面路由 ====================
 
 // 基础路径前缀（用于反向代理子路径部署）
-const BASE_PATH = process.env.BASE_PATH || '';
+const BASE_PATH = process.env.BASE_PATH || '/portal-home';
 
 // 管理后台
 app.get(`${BASE_PATH}/admin`, (req, res) => {
