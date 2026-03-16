@@ -9,6 +9,9 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// 基础路径前缀（用于反向代理子路径部署）
+const BASE_PATH = process.env.BASE_PATH || '/portal-home';
+
 // 配置文件路径
 const CONFIG_PATH = path.join(__dirname, 'config', 'apps.json');
 
@@ -67,19 +70,12 @@ function createDynamicProxy(targetUrl) {
     });
 }
 
-// ==================== 子路径支持中间件 ====================
-// 支持 /portal-home/* 路径（Nginx 反向代理保留前缀时）
-app.use('/portal-home', (req, res, next) => {
-    // 将 /portal-home/* 重写为 /*，让后续路由可以正常匹配
-    req.url = req.url.replace(/^\/portal-home/, '');
-    if (req.url === '') req.url = '/';
-    next();
-});
-
 // ==================== API 路由 ====================
+// 创建 API Router，同时挂载到 /api 和 ${BASE_PATH}/api
+const apiRouter = express.Router();
 
 // 获取所有应用配置
-app.get('/api/apps', (req, res) => {
+apiRouter.get('/apps', (req, res) => {
     const config = loadConfig();
     // 添加 BASE_PATH 前缀到 url 字段
     const appsWithBasePath = config.apps.map(app => ({
@@ -90,7 +86,7 @@ app.get('/api/apps', (req, res) => {
 });
 
 // 获取单个应用
-app.get('/api/apps/:id', (req, res) => {
+apiRouter.get('/apps/:id', (req, res) => {
     const config = loadConfig();
     const app_config = config.apps.find(a => a.id === req.params.id);
     if (!app_config) {
@@ -100,7 +96,7 @@ app.get('/api/apps/:id', (req, res) => {
 });
 
 // 添加新应用
-app.post('/api/apps', (req, res) => {
+apiRouter.post('/apps', (req, res) => {
     const config = loadConfig();
     const newApp = {
         id: req.body.id || uuidv4(),
@@ -127,7 +123,7 @@ app.post('/api/apps', (req, res) => {
 });
 
 // 更新应用
-app.put('/api/apps/:id', (req, res) => {
+apiRouter.put('/apps/:id', (req, res) => {
     const config = loadConfig();
     const index = config.apps.findIndex(a => a.id === req.params.id);
     if (index === -1) {
@@ -144,7 +140,7 @@ app.put('/api/apps/:id', (req, res) => {
 });
 
 // 删除应用
-app.delete('/api/apps/:id', (req, res) => {
+apiRouter.delete('/apps/:id', (req, res) => {
     const config = loadConfig();
     config.apps = config.apps.filter(a => a.id !== req.params.id);
     if (saveConfig(config)) {
@@ -158,7 +154,7 @@ app.delete('/api/apps/:id', (req, res) => {
 // ==================== AI 模型配置 API ====================
 
 // 获取所有 AI 模型配置
-app.get('/api/ai-models', (req, res) => {
+apiRouter.get('/ai-models', (req, res) => {
     const config = loadConfig();
     // 返回时不包含 API Key（安全考虑）
     const safeModels = config.aiModels.map(m => ({
@@ -169,7 +165,7 @@ app.get('/api/ai-models', (req, res) => {
 });
 
 // 获取启用的 AI 模型（供前端使用）
-app.get('/api/ai-models/enabled', (req, res) => {
+apiRouter.get('/ai-models/enabled', (req, res) => {
     const config = loadConfig();
     const enabledModels = config.aiModels
         .filter(m => m.enabled)
@@ -184,7 +180,7 @@ app.get('/api/ai-models/enabled', (req, res) => {
 });
 
 // 更新 AI 模型配置
-app.put('/api/ai-models/:id', (req, res) => {
+apiRouter.put('/ai-models/:id', (req, res) => {
     const config = loadConfig();
     const index = config.aiModels.findIndex(m => m.id === req.params.id);
     if (index === -1) {
@@ -217,7 +213,7 @@ app.put('/api/ai-models/:id', (req, res) => {
 });
 
 // 添加新的 AI 模型
-app.post('/api/ai-models', (req, res) => {
+apiRouter.post('/ai-models', (req, res) => {
     const config = loadConfig();
     const newModel = {
         id: req.body.id || uuidv4(),
@@ -239,7 +235,7 @@ app.post('/api/ai-models', (req, res) => {
 });
 
 // 删除 AI 模型
-app.delete('/api/ai-models/:id', (req, res) => {
+apiRouter.delete('/ai-models/:id', (req, res) => {
     const config = loadConfig();
     config.aiModels = config.aiModels.filter(m => m.id !== req.params.id);
     if (saveConfig(config)) {
@@ -252,7 +248,7 @@ app.delete('/api/ai-models/:id', (req, res) => {
 // ==================== AI 代理 API ====================
 
 // AI 聊天接口
-app.post('/api/ai/chat', async (req, res) => {
+apiRouter.post('/ai/chat', async (req, res) => {
     const { message, modelId, systemPrompt, history = [] } = req.body;
     const config = loadConfig();
 
@@ -346,7 +342,7 @@ app.post('/api/ai/chat', async (req, res) => {
 });
 
 // AI 流式聊天接口
-app.post('/api/ai/chat/stream', async (req, res) => {
+apiRouter.post('/ai/chat/stream', async (req, res) => {
     const { message, modelId, systemPrompt, history = [] } = req.body;
     const config = loadConfig();
 
@@ -476,13 +472,13 @@ app.post('/api/ai/chat/stream', async (req, res) => {
 // ==================== 全局配置 API ====================
 
 // 获取全局配置
-app.get('/api/settings', (req, res) => {
+apiRouter.get('/settings', (req, res) => {
     const config = loadConfig();
     res.json({ success: true, data: config.settings });
 });
 
 // 更新全局配置
-app.put('/api/settings', (req, res) => {
+apiRouter.put('/settings', (req, res) => {
     const config = loadConfig();
     config.settings = { ...config.settings, ...req.body };
     if (saveConfig(config)) {
@@ -493,7 +489,7 @@ app.put('/api/settings', (req, res) => {
 });
 
 // 健康检查
-app.get('/api/health', (req, res) => {
+apiRouter.get('/health', (req, res) => {
     const config = loadConfig();
     const appStatuses = config.apps.map(a => ({
         id: a.id,
@@ -513,6 +509,10 @@ app.get('/api/health', (req, res) => {
         }
     });
 });
+
+// 挂载 API Router 到两个路径（同时支持带前缀和不带前缀）
+app.use('/api', apiRouter);
+app.use(`${BASE_PATH}/api`, apiRouter);
 
 // ==================== 代理路由设置 ====================
 
@@ -547,20 +547,26 @@ function setupProxyRoutes() {
 
 // ==================== 页面路由 ====================
 
-// 基础路径前缀（用于反向代理子路径部署）
-const BASE_PATH = process.env.BASE_PATH || '/portal-home';
-
-// 管理后台
+// 管理后台（同时支持带前缀和不带前缀）
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 app.get(`${BASE_PATH}/admin`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// AI 聊天页面
+// AI 聊天页面（同时支持带前缀和不带前缀）
+app.get('/ai-chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'ai-chat.html'));
+});
 app.get(`${BASE_PATH}/ai-chat`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'ai-chat.html'));
 });
 
-// 主页 - 应用仪表板
+// 主页 - 应用仪表板（同时支持带前缀和不带前缀）
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 app.get(`${BASE_PATH}/`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
