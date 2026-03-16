@@ -57,7 +57,8 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
         proxyTimeout: 300000,
         pathRewrite: function(path, req) {
             const regex = new RegExp(pathRewriteKey);
-            const newPath = path.replace(regex, '/$1');
+            // $1 已经是斜杠或空，直接使用，避免双斜杠
+            const newPath = path.replace(regex, '$1') || '/';
             if (path !== newPath) {
                 console.log(`[PathRewrite] ${path} -> ${newPath}`);
             }
