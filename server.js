@@ -86,14 +86,17 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
             const fullPath = `${BASE_PATH}${appPath}`;
             proxyReq.setHeader('X-Proxy-Path', fullPath);
 
-            // 如果 body 已经被解析（如 express.json()），需要重新写入
-            // 注意：只处理 JSON 请求，跳过 multipart 文件上传
+            // 只显式处理 application/json 请求体
+            // 跳过 multipart/form-data 和 application/x-www-form-urlencoded
             const contentType = req.headers['content-type'] || '';
-            if (req.body && typeof req.body === 'object' && !contentType.includes('multipart/form-data')) {
+            const isJsonRequest = contentType.includes('application/json');
+
+            if (isJsonRequest && req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
                 const bodyData = JSON.stringify(req.body);
                 proxyReq.setHeader('Content-Type', 'application/json');
                 proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
                 proxyReq.write(bodyData);
+                console.log('  -> 重写 JSON body:', bodyData.substring(0, 200));
             }
         },
         onProxyRes: (proxyRes, req, res) => {
