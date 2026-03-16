@@ -9,9 +9,14 @@ cd "$SCRIPT_DIR"
 
 echo "🚀 开始部署 Portal..."
 
-# 拉取最新代码
+# 检查是否有本地冲突
 echo "📥 拉取最新代码..."
-git pull
+if ! git pull 2>/dev/null; then
+    echo "⚠️  检测到本地有修改冲突，尝试自动解决..."
+    git stash
+    git pull
+    git stash pop || echo "⚠️  恢复本地修改时有冲突，使用远程版本"
+fi
 
 # 停止并删除旧容器
 echo "🛑 停止旧容器..."
