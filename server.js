@@ -68,8 +68,6 @@ function createDynamicProxy(targetUrl) {
             proxyReq.setHeader('X-Portal-Config', configData);
         }
     });
-    // 标记为代理中间件，便于清除时识别
-    middleware._isProxyMiddleware = true;
     return middleware;
 }
 
@@ -529,18 +527,20 @@ app.use(`${BASE_PATH}/api`, apiRouter);
 
 // ==================== 代理路由设置 ====================
 
-// 存储已注册的代理路由
-let registeredProxies = new Map();
+// 存储已注册的代理中间件
+let registeredProxies = [];
 
 function setupProxyRoutes() {
     const config = loadConfig();
 
-    // 清除现有代理中间件（通过标记删除）
+    // 清除现有代理中间件
+    const beforeCount = app._router.stack.length;
     app._router.stack = app._router.stack.filter(layer => {
-        // 保留非代理中间件（即没有 markedForDeletion 标记的）
-        return !layer.handle._isProxyMiddleware;
+        return !registeredProxies.includes(layer.handle);
     });
-    registeredProxies.clear();
+    const afterCount = app._router.stack.length;
+    console.log(`🧹 清除 ${beforeCount - afterCount} 个旧代理中间件`);
+    registeredProxies = [];
 
     // 注册新的代理路由
     config.apps.forEach(appConfig => {
@@ -555,7 +555,7 @@ function setupProxyRoutes() {
             app.use(`${BASE_PATH}${proxyPath}`, proxyMiddleware);
             app.use(`${BASE_PATH}${proxyPath}/*`, proxyMiddleware);
 
-            registeredProxies.set(proxyPath, proxyMiddleware);
+            registeredProxies.push(proxyMiddleware);
             console.log(`✅ 代理已注册: ${proxyPath} -> ${appConfig.targetUrl}`);
         }
     });
