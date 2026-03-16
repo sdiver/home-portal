@@ -43,16 +43,19 @@ function saveConfig(config) {
 }
 
 // 动态创建代理中间件
-function createDynamicProxy(targetUrl, basePath) {
+// basePath: 如 '/portal-home' 或 null
+// appPath: 如 '/app/parenting'
+function createDynamicProxy(targetUrl, basePath, appPath) {
+    const pathRewriteKey = basePath ? `^${basePath}${appPath}` : `^${appPath}`;
     const middleware = createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
         ws: true,
         timeout: 30000,
         proxyTimeout: 30000,
-        pathRewrite: basePath ? {
-            [`^${basePath}`]: ''
-        } : undefined,
+        pathRewrite: {
+            [pathRewriteKey]: ''
+        },
         onError: (err, req, res) => {
             console.error('代理错误:', err.message, '目标:', targetUrl, '路径:', req.url);
             res.status(502).json({
@@ -550,12 +553,12 @@ function setupProxyRoutes() {
             const proxyPath = `/app/${appConfig.id}`;
 
             // 注册不带前缀的路径
-            const proxyMiddleware1 = createDynamicProxy(appConfig.targetUrl, null);
+            const proxyMiddleware1 = createDynamicProxy(appConfig.targetUrl, null, proxyPath);
             app.use(proxyPath, proxyMiddleware1);
             app.use(`${proxyPath}/*`, proxyMiddleware1);
 
             // 注册带 BASE_PATH 前缀的路径（需要 pathRewrite）
-            const proxyMiddleware2 = createDynamicProxy(appConfig.targetUrl, BASE_PATH);
+            const proxyMiddleware2 = createDynamicProxy(appConfig.targetUrl, BASE_PATH, proxyPath);
             app.use(`${BASE_PATH}${proxyPath}`, proxyMiddleware2);
             app.use(`${BASE_PATH}${proxyPath}/*`, proxyMiddleware2);
 
