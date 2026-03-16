@@ -47,6 +47,7 @@ function saveConfig(config) {
 // appPath: 如 '/app/parenting'
 function createDynamicProxy(targetUrl, basePath, appPath) {
     const pathRewriteKey = basePath ? `^${basePath}${appPath}(/|$)` : `^${appPath}(/|$)`;
+    console.log(`[ProxySetup] basePath=${basePath}, appPath=${appPath}, key=${pathRewriteKey}`);
     const middleware = createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
@@ -54,8 +55,13 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
         // 增加超时时间：普通请求30秒，文件上传5分钟
         timeout: 60000,
         proxyTimeout: 300000,
-        pathRewrite: {
-            [pathRewriteKey]: '/$1'
+        pathRewrite: function(path, req) {
+            const regex = new RegExp(pathRewriteKey);
+            const newPath = path.replace(regex, '/$1');
+            if (path !== newPath) {
+                console.log(`[PathRewrite] ${path} -> ${newPath}`);
+            }
+            return newPath;
         },
         // 保持连接活动，防止大文件上传时断开
         preserveHeaderKeyCase: true,
@@ -581,15 +587,13 @@ function setupProxyRoutes() {
             // 使用 id 构建代理路径，避免 url 字段中的 BASE_PATH 前缀影响
             const proxyPath = `/app/${appConfig.id}`;
 
-            // 注册不带前缀的路径
+            // 注册不带前缀的路径 - 只注册一个，Express 的 use 是前缀匹配
             const proxyMiddleware1 = createDynamicProxy(appConfig.targetUrl, null, proxyPath);
             app.use(proxyPath, proxyMiddleware1);
-            app.use(`${proxyPath}/*`, proxyMiddleware1);
 
-            // 注册带 BASE_PATH 前缀的路径（需要 pathRewrite）
+            // 注册带 BASE_PATH 前缀的路径（需要 pathRewrite）- 只注册一个
             const proxyMiddleware2 = createDynamicProxy(appConfig.targetUrl, BASE_PATH, proxyPath);
             app.use(`${BASE_PATH}${proxyPath}`, proxyMiddleware2);
-            app.use(`${BASE_PATH}${proxyPath}/*`, proxyMiddleware2);
 
             console.log(`✅ 代理已注册: ${proxyPath} -> ${appConfig.targetUrl}`);
             console.log(`✅ 代理已注册: ${BASE_PATH}${proxyPath} -> ${appConfig.targetUrl}`);
