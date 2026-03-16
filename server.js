@@ -44,7 +44,7 @@ function saveConfig(config) {
 
 // 动态创建代理中间件
 function createDynamicProxy(targetUrl) {
-    return createProxyMiddleware({
+    const middleware = createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
         ws: true,
@@ -68,6 +68,9 @@ function createDynamicProxy(targetUrl) {
             proxyReq.setHeader('X-Portal-Config', configData);
         }
     });
+    // 标记为代理中间件，便于清除时识别
+    middleware._isProxyMiddleware = true;
+    return middleware;
 }
 
 // ==================== API 路由 ====================
@@ -532,11 +535,10 @@ let registeredProxies = new Map();
 function setupProxyRoutes() {
     const config = loadConfig();
 
-    // 清除现有代理路由
-    registeredProxies.forEach((middleware, path) => {
-        app._router.stack = app._router.stack.filter(layer => {
-            return !(layer.route && layer.route.path === path);
-        });
+    // 清除现有代理中间件（通过标记删除）
+    app._router.stack = app._router.stack.filter(layer => {
+        // 保留非代理中间件（即没有 markedForDeletion 标记的）
+        return !layer.handle._isProxyMiddleware;
     });
     registeredProxies.clear();
 
