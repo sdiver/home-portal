@@ -43,15 +43,18 @@ function saveConfig(config) {
 }
 
 // 动态创建代理中间件
-function createDynamicProxy(targetUrl) {
+function createDynamicProxy(targetUrl, basePath) {
     const middleware = createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
         ws: true,
         timeout: 30000,
         proxyTimeout: 30000,
+        pathRewrite: basePath ? {
+            [`^${basePath}`]: ''
+        } : undefined,
         onError: (err, req, res) => {
-            console.error('代理错误:', err.message);
+            console.error('代理错误:', err.message, '目标:', targetUrl, '路径:', req.url);
             res.status(502).json({
                 error: '服务不可用',
                 message: '目标应用可能未启动',
@@ -547,16 +550,21 @@ function setupProxyRoutes() {
         if (appConfig.enabled && appConfig.targetUrl) {
             // 使用 id 构建代理路径，避免 url 字段中的 BASE_PATH 前缀影响
             const proxyPath = `/app/${appConfig.id}`;
-            const proxyMiddleware = createDynamicProxy(appConfig.targetUrl);
 
-            app.use(proxyPath, proxyMiddleware);
-            app.use(`${proxyPath}/*`, proxyMiddleware);
-            // 同时注册带 BASE_PATH 前缀的路径
-            app.use(`${BASE_PATH}${proxyPath}`, proxyMiddleware);
-            app.use(`${BASE_PATH}${proxyPath}/*`, proxyMiddleware);
+            // 注册不带前缀的路径
+            const proxyMiddleware1 = createDynamicProxy(appConfig.targetUrl, null);
+            app.use(proxyPath, proxyMiddleware1);
+            app.use(`${proxyPath}/*`, proxyMiddleware1);
+            registeredProxies.push(proxyMiddleware1);
 
-            registeredProxies.push(proxyMiddleware);
+            // 注册带 BASE_PATH 前缀的路径（需要 pathRewrite）
+            const proxyMiddleware2 = createDynamicProxy(appConfig.targetUrl, BASE_PATH);
+            app.use(`${BASE_PATH}${proxyPath}`, proxyMiddleware2);
+            app.use(`${BASE_PATH}${proxyPath}/*`, proxyMiddleware2);
+            registeredProxies.push(proxyMiddleware2);
+
             console.log(`✅ 代理已注册: ${proxyPath} -> ${appConfig.targetUrl}`);
+            console.log(`✅ 代理已注册: ${BASE_PATH}${proxyPath} -> ${appConfig.targetUrl}`);
         }
     });
 }
