@@ -46,7 +46,7 @@ function saveConfig(config) {
 // basePath: 如 '/portal-home' 或 null
 // appPath: 如 '/app/parenting'
 function createDynamicProxy(targetUrl, basePath, appPath) {
-    const pathRewriteKey = basePath ? `^${basePath}${appPath}` : `^${appPath}`;
+    const pathRewriteKey = basePath ? `^${basePath}${appPath}(/|$)` : `^${appPath}(/|$)`;
     const middleware = createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
@@ -54,7 +54,7 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
         timeout: 30000,
         proxyTimeout: 30000,
         pathRewrite: {
-            [pathRewriteKey]: ''
+            [pathRewriteKey]: '/$1'
         },
         onError: (err, req, res) => {
             console.error('代理错误:', err.message, '目标:', targetUrl, '路径:', req.url);
