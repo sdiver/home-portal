@@ -16,6 +16,8 @@ services:
       - "3000:3000"  # Parenting 育儿
       - "3001:3001"  # Cello 大提琴
     volumes:
+      # 持久化 portal 配置
+      - ./portal/config:/app/portal/config
       # 持久化 parenting 数据库
       - ./parenting/data:/app/parenting/data
       - ./parenting/kids_learning.db:/app/parenting/kids_learning.db
