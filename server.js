@@ -51,20 +51,28 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
         target: targetUrl,
         changeOrigin: true,
         ws: true,
-        timeout: 30000,
-        proxyTimeout: 30000,
+        // 增加超时时间：普通请求30秒，文件上传5分钟
+        timeout: 60000,
+        proxyTimeout: 300000,
         pathRewrite: {
             [pathRewriteKey]: '/$1'
         },
+        // 保持连接活动，防止大文件上传时断开
+        preserveHeaderKeyCase: true,
+        followRedirects: true,
         onError: (err, req, res) => {
-            console.error('代理错误:', err.message, '目标:', targetUrl, '路径:', req.url);
-            res.status(502).json({
-                error: '服务不可用',
-                message: '目标应用可能未启动',
-                target: targetUrl
-            });
+            console.error('代理错误:', err.message, '目标:', targetUrl, '路径:', req.url, '方法:', req.method);
+            if (!res.headersSent) {
+                res.status(502).json({
+                    error: '服务不可用',
+                    message: '目标应用可能未启动或请求超时',
+                    target: targetUrl
+                });
+            }
         },
         onProxyReq: (proxyReq, req, res) => {
+            console.log('代理请求:', req.method, req.url, '->', targetUrl);
+
             // 添加全局配置到请求头（使用 base64 编码避免非法字符）
             const config = loadConfig();
             const configData = Buffer.from(JSON.stringify({
@@ -87,6 +95,9 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
                 proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
                 proxyReq.write(bodyData);
             }
+        },
+        onProxyRes: (proxyRes, req, res) => {
+            console.log('代理响应:', proxyRes.statusCode, req.method, req.url);
         }
     });
     // 标记为代理中间件，便于清除时识别
