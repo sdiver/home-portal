@@ -73,6 +73,10 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
             })).toString('base64');
             proxyReq.setHeader('X-Portal-Config', configData);
 
+            // 传递代理路径信息，让后端知道当前的代理前缀
+            const fullPath = basePath ? `${basePath}${appPath}` : appPath;
+            proxyReq.setHeader('X-Proxy-Path', fullPath);
+
             // 如果 body 已经被解析（如 express.json()），需要重新写入
             if (req.body && typeof req.body === 'object') {
                 const bodyData = JSON.stringify(req.body);
