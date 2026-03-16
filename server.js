@@ -74,7 +74,8 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
             proxyReq.setHeader('X-Portal-Config', configData);
 
             // 传递代理路径信息，让后端知道当前的代理前缀
-            const fullPath = basePath ? `${basePath}${appPath}` : appPath;
+            // 始终使用带 BASE_PATH 的完整路径
+            const fullPath = `${BASE_PATH}${appPath}`;
             proxyReq.setHeader('X-Proxy-Path', fullPath);
 
             // 如果 body 已经被解析（如 express.json()），需要重新写入
