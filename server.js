@@ -72,6 +72,14 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
                 settings: config.settings
             })).toString('base64');
             proxyReq.setHeader('X-Portal-Config', configData);
+
+            // 如果 body 已经被解析（如 express.json()），需要重新写入
+            if (req.body && typeof req.body === 'object') {
+                const bodyData = JSON.stringify(req.body);
+                proxyReq.setHeader('Content-Type', 'application/json');
+                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                proxyReq.write(bodyData);
+            }
         }
     });
     // 标记为代理中间件，便于清除时识别
