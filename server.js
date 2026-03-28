@@ -66,7 +66,6 @@ function createDynamicProxy(targetUrl, basePath, appPath) {
         },
         // 保持连接活动，防止大文件上传时断开
         preserveHeaderKeyCase: true,
-        followRedirects: true,
         onError: (err, req, res) => {
             console.error('代理错误:', err.message, '目标:', targetUrl, '路径:', req.url, '方法:', req.method);
             if (!res.headersSent) {
